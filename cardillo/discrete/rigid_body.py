@@ -18,17 +18,17 @@ from cardillo.math import (
 class RigidBody:
     def __init__(self, mass, B_Theta_C, q0=None, u0=None, name="rigid_body"):
         """Rigid body parametrized by center of mass in inertial basis I_r_OP in
-        R^3 and non-unit quaternions p in R^4 for rotation, i.e., the 
-        generalized position coordinates are q = (I_r_OP, p) in R^7. The 
-        generalized velocity coordinates u = (I_v_C, B_omega_IK) in R^6 are 
-        composed of the velocity of the center of mass I_v_C in R^3 together 
-        with the angular velocity represented in the body-fixed K-basis 
-        B_omega_IK in R^3. 
-        
-        Exponential function and kinematic differential equation are found in 
-        Egeland2002 (6.199), (6.329) and (6.330). The implementation below 
-        handles non-unit quaternions. After each successfull time step they are 
-        projected to be of unit length. Alternatively, the constraint can be added 
+        R^3 and non-unit quaternions p in R^4 for rotation, i.e., the
+        generalized position coordinates are q = (I_r_OP, p) in R^7. The
+        generalized velocity coordinates u = (I_v_C, B_omega_IK) in R^6 are
+        composed of the velocity of the center of mass I_v_C in R^3 together
+        with the angular velocity represented in the body-fixed K-basis
+        B_omega_IK in R^3.
+
+        Exponential function and kinematic differential equation are found in
+        Egeland2002 (6.199), (6.329) and (6.330). The implementation below
+        handles non-unit quaternions. After each successfull time step they are
+        projected to be of unit length. Alternatively, the constraint can be added
         to the kinematic differential equations using g_S.
 
         Parameters
@@ -43,7 +43,7 @@ class RigidBody:
             Initial velocity coordinates at time t0.
         name : str
             Name of rigid body.
-        
+
         References
         ----------
         Nuetzi2016: https://www.research-collection.ethz.ch/handle/20.500.11850/117165 \\

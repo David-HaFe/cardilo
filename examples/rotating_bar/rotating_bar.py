@@ -23,6 +23,63 @@ from cardillo.forces import Moment
 from cardillo.solver import Moreau
 from cardillo.math import quat2axis_angle
 from cardillo.interactions import TwoPointInteraction
+from cardillo.force_laws._base import ScalarForceLawComplianceForm
+
+"""
+    Implements the spring damper located at the base of the pendulum
+"""
+class rotational_spring_damper(ScalarForceLawComplianceForm):
+
+    def __init(
+        self,
+        subsystem,
+        c,
+        d,
+        phi_0=0,
+        compliance_form=True,
+        name="rotational_spring_damper",
+    ):
+        super().__init__(sybsystem, compliance_form)
+        self.c = c
+        self.d = d
+        self.phi_0 = phi_0
+        self.name = name
+
+    def assembler_callback(self):
+        super().assembler_callback()
+
+    # TODO: you need the rotation here instead of the distance.
+    #       find out where you can get that from.
+    # spring
+    def _E_pot(self, t, phi):
+        return .5* self.c * (phi-self.phi_0) ** 2
+
+    # lambda_c -> TODO: find out what means here? [constraint?]
+    def _la_c(self, t, phi, phi_dot):
+        return -self.c * (phi-self.phi_0) - self.d*(phi_dot)
+
+    # lambda_c_l -> TODO: find out what l means here [lambda_c * l?
+    def _la_c_l(self, t, phi, phi_dot):
+        return -self.c
+
+    # lambda_c_l_dot ->
+    def _la_c_l_dot(self, t, phi, phi_dot):
+        return self.d
+
+    # c ->
+    def _c(self, t, phi, phi_dot, lambda_c):
+        return lambda_c / self.c + (phi-self.phi_0) + (self.d/self.c) * phi_dot
+
+    # c -> what does this mean?
+    def _c_l(self, t, phi, phi_dot, lambda_c):
+        return 1
+
+    # c ->
+    def _c_l_dot(self, t, phi, phi_dot, lambda_c):
+        return self.d / self.c
+
+    def c_la_c(self):
+        return 1/self.k
 
 if __name__ == "__main__":
 
@@ -33,7 +90,9 @@ if __name__ == "__main__":
     DEG2RAD = np.pi/180
     RAD2DEG = 180/np.pi
 
-    ### tuning zone ### -> use degrees, kilograms, meters
+    ###########################################################################
+    # tuning zone -> use degrees, kilograms, meters                           #
+    ###########################################################################
     initial_position =  90
     initial_velocity =  10
     neutral_position =  0

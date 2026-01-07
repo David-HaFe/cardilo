@@ -10,7 +10,7 @@ eye3 = np.eye(3, dtype=float)
 
 
 def Exp_SO3(psi: np.ndarray) -> np.ndarray:
-    """SO(3) exponential function, see Crisfield1999 above (4.1) and 
+    """SO(3) exponential function, see Crisfield1999 above (4.1) and
     Park2005 (12).
 
     References
@@ -32,7 +32,7 @@ def Exp_SO3(psi: np.ndarray) -> np.ndarray:
 
 
 def Exp_SO3_psi(psi: np.ndarray) -> np.ndarray:
-    """Derivative of the axis-angle rotation found in Crisfield1999 above (4.1). 
+    """Derivative of the axis-angle rotation found in Crisfield1999 above (4.1).
     Derivations and final results are given in Gallego2015 (9).
 
     References
@@ -509,13 +509,13 @@ def quat2axis_angle(Q: np.ndarray) -> np.ndarray:
 def smallest_rotation(
     J_a: np.ndarray, J_b: np.ndarray, normalize: bool = True
 ) -> np.ndarray:
-    """Compute the transformation matrix A_JK in accordance with 
+    """Compute the transformation matrix A_JK in accordance with
     {}_J a = A_JK {}_J b. This is sometimes referred to 'smallest rotation',
-    see Crisield1996 Section 16.13. Both vectors are normalized if 
+    see Crisield1996 Section 16.13. Both vectors are normalized if
     normalize=True is used.
 
-    This tranformation has a singularity for {}_J b = -{}_J a. This can be 
-    overcome using a singular value decomposition that determines the rotation 
+    This tranformation has a singularity for {}_J b = -{}_J a. This can be
+    overcome using a singular value decomposition that determines the rotation
     axis, see Eigen3.
 
     References
@@ -545,7 +545,7 @@ def smallest_rotation(
 
 
 def Exp_SO3_quat(P, normalize=True):
-    """Exponential mapping defined by (unit) quaternion, see 
+    """Exponential mapping defined by (unit) quaternion, see
     Egeland2002 (6.163), Nuetzi2016 (3.31) and Rucker2018 (13).
 
     References:
@@ -616,7 +616,7 @@ def T_SO3_quat(P, normalize=True):
 
 def T_SO3_inv_quat(P, normalize=True):
     """Inverse tangent map for unit quaternion. See Egeland2002 (6.329) and
-    (6.330), Nuetzi2016 (3.11) and (4.19) as well as Rucker2018 (21) 
+    (6.330), Nuetzi2016 (3.11) and (4.19) as well as Rucker2018 (21)
     and (22).
 
     References:

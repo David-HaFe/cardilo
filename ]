@@ -13,6 +13,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
+from pathlib import Path
 from scipy.integrate import odeint
 
 from cardillo import System
@@ -20,7 +21,6 @@ from cardillo.discrete import RigidBody, Frame
 from cardillo.constraints import Revolute
 from cardillo.solver import Moreau
 from cardillo.force_laws._base import ScalarForceLawComplianceForm
-from cardillo.math import quat2axis_angle
 
 """
     Implements the spring damper located at the base of the pendulum
@@ -163,10 +163,10 @@ if __name__ == "__main__":
         name = "bar",
     )
 
-    # pivot point
+    # pivot
     pivot = Revolute(
-        subsystem1 = fixed_point,
-        subsystem2 = bar,
+        fixed_point,
+        bar,
         axis = 2,
         r_OJ0 = np.zeros(3),
         A_IJ0 = np.eye(3),
@@ -174,7 +174,12 @@ if __name__ == "__main__":
         name = "pivot",
     )
 
-    # spring damper coupling
+    # forces
+    ground_to_bar = TwoPointInteraction(
+        subsystem1 = fixed_point,
+        subsystem2 = bar,
+        name = "ground-to-bar connection",
+    )
     spring_damper = RotationalSpringDamper(
         subsystem=pivot,
         c=c,

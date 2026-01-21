@@ -99,7 +99,7 @@ if __name__ == "__main__":
     initial_velocity =  10
     neutral_position =  0
 
-    spring_constant =   2
+    spring_constant =   1
     damper_constant =   1
 
     mass =      1
@@ -180,8 +180,6 @@ if __name__ == "__main__":
     )
 
     # forces
-    # CAUTION:  I wanted to get the rotation of the bar, and I assumed that
-    #           this is given by q0[6].
     ground_to_bar = TwoPointInteraction(
         subsystem1 = fixed_point,
         subsystem2 = bar,
@@ -192,20 +190,10 @@ if __name__ == "__main__":
         c=c,
         d=d,
         phi_0=0,
-        compliance_form=True,
+        compliance_form=False,
         name="rotational spring damper",
     )
-    # spring = Moment(
-    #     np.array([0, 0, -c*(ground_to_bar.r_OP2-phi_e)]),
-    #     bar,
-    #     name = "spring force",
-    # )
-    # damper = Moment(
-    #     np.array([0, 0, -d*bar.u0[5]]),
-    #     bar,
-    #     name = "damper force",
-    # )
-    #
+
     system.add(fixed_point)
     system.add(bar)
     system.add(pivot)

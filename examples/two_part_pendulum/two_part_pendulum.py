@@ -94,13 +94,13 @@ class TwoPartPendulum():
 
         # initial condition setup bar 1
         r_OC01 = np.array([
-            l_1_hat*np.sin(phi_0) + self.x_m(0),
-            -l_1_hat*np.cos(phi_0),
+            self.l_1_hat*np.sin(phi_0) + self.x_m(0),
+            -self.l_1_hat*np.cos(phi_0),
             0,
         ])
         v_C01 = np.array([
-            l_1_hat*phi_dot_0*np.cos(phi_0) + self.x_m_dot(0),
-            l_1_hat*phi_dot_0*np.sin(phi_0),
+            self.l_1_hat*phi_dot_0*np.cos(phi_0) + self.x_m_dot(0),
+            self.l_1_hat*phi_dot_0*np.sin(phi_0),
             0,
         ])
         A_IB01 = np.array([
@@ -119,13 +119,13 @@ class TwoPartPendulum():
 
         # initial condition setup bar 2
         r_OC02 = np.array([
-            l_2_hat*np.sin(phi_0) + self.x_m(0),
-            -l_2_hat*np.cos(phi_0),
+            self.l_2_hat*np.sin(phi_0) + self.x_m(0),
+            -self.l_2_hat*np.cos(phi_0),
             0,
         ])
         v_C02 = np.array([
-            l_2_hat*phi_dot_0*np.cos(phi_0) + self.x_m_dot(0),
-            l_2_hat*phi_dot_0*np.sin(phi_0),
+            self.l_2_hat*phi_dot_0*np.cos(phi_0) + self.x_m_dot(0),
+            self.l_2_hat*phi_dot_0*np.sin(phi_0),
             0,
         ])
         A_IB02 = np.array([
@@ -192,8 +192,8 @@ class TwoPartPendulum():
         # spring damper coupling
         spring_damper = KelvinVoigtElement(
             subsystem=pivot,
-            k=c,
-            d=d,
+            k=self.c,
+            d=self.d,
             l_ref=self.phi_e,
             compliance_form=False,
             name="rotational spring damper",
@@ -201,13 +201,13 @@ class TwoPartPendulum():
 
         # gravity
         gravity_1 = Force(
-            force=np.array([0, -m_1*g, 0]),
+            force=np.array([0, -self.m_1*self.g, 0]),
             subsystem=bar_1,
             B_r_CP=np.zeros(3),
             name="gravity_bar_1",
         )
         gravity_2 = Force(
-            force=np.array([0, -m_2*g, 0]),
+            force=np.array([0, -self.m_2*self.g, 0]),
             subsystem=bar_2,
             B_r_CP=np.zeros(3),
             name="gravity_bar_2",

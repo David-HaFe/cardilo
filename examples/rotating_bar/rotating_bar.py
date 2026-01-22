@@ -30,6 +30,7 @@ from cardillo.math import quat2axis_angle
 DEG2RAD = np.pi/180
 RAD2DEG = 180/np.pi
 
+
 class RotatingBar():
 
     def __init__(
@@ -133,7 +134,7 @@ class RotatingBar():
         # initial condition ODE
         self.q_0 = np.array([phi_0, phi_dot_0])
 
-        # save results
+        # variables to save the results
         self.solution_cardillo = None
         self.solution_ODE = None
         self.time = np.linspace(0, self.t_end, int(self.t_end/self.dt))
@@ -218,6 +219,7 @@ class RotatingBar():
         plt_bottom.grid()
 
         plt.show()
+
 
 if __name__ == "__main__":
     # tuning zone -> use degrees, kilograms, meters

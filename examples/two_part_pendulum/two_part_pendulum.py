@@ -22,6 +22,7 @@ from cardillo.solver import Moreau
 from cardillo.forces import Force
 from cardillo.force_laws._base import ScalarForceLawComplianceForm
 from cardillo.math import quat2axis_angle
+import csv
 
 """
     Implements the spring damper located at the base of the pendulum
@@ -94,8 +95,8 @@ if __name__ == "__main__":
     initial_velocity =  0
     neutral_position =  45
 
-    spring_constant =   0
-    damper_constant =   0
+    spring_constant =   2
+    damper_constant =   1
     excitation =  lambda t: 0*t # 3*np.sin(1*t)
 
     mass_1 = 1
@@ -328,12 +329,12 @@ if __name__ == "__main__":
     # two lines below
     time_c = solution_cardillo.t
     q_c = np.stack(
-        [quat2axis_angle(row) for row in solution_cardillo.q[:,3:]], axis=1,
+        [quat2axis_angle(row) for row in solution_cardillo.q[:,3:7]], axis=1,
     )
-    print(solution_cardillo.q)
 
     phi_c = q_c[2] * RAD2DEG
     phi_dot_c = solution_cardillo.u[:,5] * RAD2DEG
+
     # ODE solution
     plt.figure(1)
     plt.plot(time_o, phi_o, 'b', label="phi [deg]")
@@ -374,12 +375,27 @@ if __name__ == "__main__":
 
     # excitation
     plt.figure(4)
-    plt.plot(time_o, x_m_ddot(time_o), 'g', label="excitation x_m_ddot (from ODE sol)")
+    label = "excitation x_m_ddot (from ODE sol)"
+    plt.plot(time_o, x_m_ddot(time_o), 'g', label=label)
     plt.xlabel("time [s]")
     plt.ylabel("x_m ddot [m/s]")
     plt.legend()
     plt.grid()
 
     plt.show()
+
+    ###########################################################################
+    # write csv file                                                          #
+    ###########################################################################
+
+    file_path = 'examples/two_part_pendulum/two_part_pendulum_log.csv'
+    with open(file_path, 'w+', newline='') as csvfile:
+        writer = csv.writer(csvfile, delimiter=',')
+        line = np.zeros(3)
+        for index in range(0, solution_cardillo.t.size):
+            line[0] = solution_cardillo.t[index]
+            line[1] = phi_c[index]
+            line[2] = phi_dot_c[index]
+            writer.writerow(line)
 
 

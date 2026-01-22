@@ -22,7 +22,6 @@ def check_time_derivatives(f, f_t, f_tt, eps=1.0e-6):
         Callable time derivative f_t.
     f_tt__ :
         Callable second time derivative f_tt.
-
     """
     if not callable(f):
         f__ = lambda t: f

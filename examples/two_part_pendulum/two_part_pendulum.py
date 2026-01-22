@@ -21,64 +21,10 @@ from cardillo.constraints import Revolute, RigidConnection
 from cardillo.solver import Moreau
 from cardillo.forces import Force
 from cardillo.force_laws._base import ScalarForceLawComplianceForm
+from cardillo.force_laws.kelvin_voigt_element import KelvinVoigtElement
 from cardillo.math import quat2axis_angle
+from cardillo.utility.check_time_derivatives import check_time_derivatives
 import csv
-
-"""
-    Implements the spring damper located at the base of the pendulum
-    This is not an exact copy of the Kelvin-Voigt-Element, because here the
-    force law uses rotational displacement instead of distance.
-"""
-class RotationalSpringDamper(ScalarForceLawComplianceForm):
-
-    def __init__(
-        self,
-        subsystem,
-        c,
-        d,
-        phi_0=0,
-        compliance_form=True,
-        name="rotational_spring_damper",
-    ):
-        super().__init__(subsystem, compliance_form)
-        self.c = c
-        self.d = d
-        self.phi_0 = phi_0
-        self.name = name
-
-    def assembler_callback(self):
-        super().assembler_callback()
-
-    # spring
-    def _E_pot(self, t, phi):
-        return .5* self.c * (phi-self.phi_0) ** 2
-
-    # lambda_c -> TODO: find out what this means here? [constraint?]
-    def _la_c(self, t, phi, phi_dot):
-        return -self.c * (phi-self.phi_0) - self.d*(phi_dot)
-
-    # # lambda_c_l -> TODO: find out what l means here [lambda_c * l?
-    def _la_c_l(self, t, phi, phi_dot):
-        return -self.c
-
-    # # lambda_c_l_dot ->
-    def _la_c_l_dot(self, t, phi, phi_dot):
-        return -self.d
-
-    # c ->
-    def _c(self, t, phi, phi_dot, lambda_c):
-        return lambda_c / self.c + (phi-self.phi_0) + (self.d/self.c) * phi_dot
-
-    # # c -> what does this mean?
-    def _c_l(self, t, phi, phi_dot, lambda_c):
-        return 1
-
-    # # c ->
-    def _c_l_dot(self, t, phi, phi_dot, lambda_c):
-        return self.d / self.c
-
-    def c_la_c(self):
-        return 1/self.c
 
 if __name__ == "__main__":
     ###########################################################################
@@ -93,19 +39,19 @@ if __name__ == "__main__":
     ###########################################################################
     initial_position =  45
     initial_velocity =  0
-    neutral_position =  45
+    neutral_position =  90
 
-    spring_constant =   2
-    damper_constant =   1
-    excitation =  lambda t: 0*t # 3*np.sin(1*t)
+    spring_constant =   4
+    damper_constant =   2
+    excitation =  lambda t: .3*np.sin(1*t)
 
     mass_1 = 1
     mass_2 = 1
     length_1 = 1
     length_2 = 1
 
-    simulation_time =   10
-    time_step =         .005
+    simulation_time =   20
+    time_step =         .001
     ###########################################################################
 
     # simulation parameters
@@ -128,9 +74,10 @@ if __name__ == "__main__":
     d = damper_constant
     # x_m = lambda t: 3/4*np.sin(4*t)
     # x_m_dot = lambda t: 3*np.cos(4*t)# lambda t : excitation(t)
-    x_m_ddot = lambda t: excitation(t)
-    x_m_0 = 0
-    x_m_dot_0 = 0
+    x_m = lambda t: excitation(t)
+
+    # take first and second derivative
+    _, x_m_dot, x_m_ddot = check_time_derivatives(f=x_m, f_t=None, f_tt=None)
 
     g = 9.81
 
@@ -144,12 +91,12 @@ if __name__ == "__main__":
 
     # initial condition setup bar 1
     r_OC01 = np.array([
-        l_1_hat*np.sin(phi_0) + x_m_0,
+        l_1_hat*np.sin(phi_0) + x_m(0),
         -l_1_hat*np.cos(phi_0),
         0,
     ])
     v_C01 = np.array([
-        l_1_hat*phi_dot_0*np.cos(phi_0) + x_m_dot_0,
+        l_1_hat*phi_dot_0*np.cos(phi_0) + x_m_dot(0),
         l_1_hat*phi_dot_0*np.sin(phi_0),
         0,
     ])
@@ -169,12 +116,12 @@ if __name__ == "__main__":
 
     # initial condition setup bar 2
     r_OC02 = np.array([
-        l_2_hat*np.sin(phi_0) + x_m_0,
+        l_2_hat*np.sin(phi_0) + x_m(0),
         -l_2_hat*np.cos(phi_0),
         0,
     ])
     v_C02 = np.array([
-        l_2_hat*phi_dot_0*np.cos(phi_0) + x_m_dot_0,
+        l_2_hat*phi_dot_0*np.cos(phi_0) + x_m_dot(0),
         l_2_hat*phi_dot_0*np.sin(phi_0),
         0,
     ])
@@ -196,9 +143,11 @@ if __name__ == "__main__":
 
     # fixed point
     fixed_point = Frame(
-        r_OP = np.zeros(3),
-        A_IB = np.eye(3),
-        name = "fixed point",
+        r_OP=lambda t: np.array([x_m(t), 0, 0]),
+        r_OP_t=lambda t: np.array([x_m_dot(t), 0, 0]),
+        r_OP_tt=lambda t: np.array([x_m_ddot(t), 0, 0]),
+        A_IB=np.eye(3),
+        name="fixed point",
     )
 
     # bars
@@ -238,11 +187,11 @@ if __name__ == "__main__":
     )
 
     # spring damper coupling
-    spring_damper = RotationalSpringDamper(
+    spring_damper = KelvinVoigtElement(
         subsystem=pivot,
-        c=c,
+        k=c,
         d=d,
-        phi_0=0,
+        l_ref=phi_e,
         compliance_form=False,
         name="rotational spring damper",
     )
@@ -375,10 +324,14 @@ if __name__ == "__main__":
 
     # excitation
     plt.figure(4)
-    label = "excitation x_m_ddot (from ODE sol)"
-    plt.plot(time_o, x_m_ddot(time_o), 'g', label=label)
+    label = "excitation x_m [m] (from ODE sol)"
+    plt.plot(time_o, x_m(time_o), 'r', label=label)
+    label = "excitation x_m_dot [m/s] (from ODE sol)"
+    plt.plot(time_o, x_m_dot(time_o), 'g', label=label)
+    label = "excitation x_m_ddot [m/s²] (from ODE sol)"
+    plt.plot(time_o, x_m_ddot(time_o), 'b', label=label)
     plt.xlabel("time [s]")
-    plt.ylabel("x_m ddot [m/s]")
+    plt.ylabel("[unit]")
     plt.legend()
     plt.grid()
 

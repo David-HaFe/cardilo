@@ -1,16 +1,5 @@
 
 
-"""
-    This script implements the rotating bar in cardillo as well as with an ODE.
-    The following ODE is used
-        q₁= φ, q₂= φ̇
-        q̇₁ = q₂
-        q̇₂ = −dq₂ − c(q₁−φₑ)
-
-    Date:   09.12.2025
-    Author: David Hambach Ferrer
-"""
-
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.integrate import odeint
@@ -19,18 +8,22 @@ from cardillo import System
 from cardillo.discrete import RigidBody, Frame
 from cardillo.constraints import Revolute
 from cardillo.solver import Moreau
-from cardillo.force_laws._base import ScalarForceLawComplianceForm
 from cardillo.force_laws.kelvin_voigt_element import KelvinVoigtElement
 from cardillo.math import quat2axis_angle
-
-###############################################################################
-# Parameters                                                                  #
-###############################################################################
 
 DEG2RAD = np.pi/180
 RAD2DEG = 180/np.pi
 
+"""
+    This class implements the rotating bar in cardillo as well as with an ODE.
+    The following ODE is used
+        q₁= φ, q₂= φ̇
+        q̇₁ = q₂
+        q̇₂ = −dq₂ − c(q₁−φₑ)
 
+    Date:   09.12.2025
+    Author: David Hambach Ferrer
+"""
 class RotatingBar():
 
     def __init__(
@@ -45,6 +38,7 @@ class RotatingBar():
         simulation_time=10,
         time_step=.005,
     ):
+
         # simulation parameters
         self.t_end = simulation_time
         self.dt = time_step
@@ -143,11 +137,16 @@ class RotatingBar():
     # simulation                                                              #
     ###########################################################################
 
+    """
+        simulates everything according to the defined setup using cardillo
+    """
     def simulate_cardillo(self):
         solver = Moreau(self.system, self.t_end, self.dt)
         self.solution_cardillo = solver.solve()
 
-    # dynamics
+    """
+        contains system dynamics that are passed on to the ode
+    """
     def equations_ODE(self, q, t):
         q_dot_1 = q[1]
         q_dot_2 = (
@@ -156,13 +155,34 @@ class RotatingBar():
         )
         return np.array([q_dot_1, q_dot_2])
 
+    """
+        simulates everything according to the defined setup using the ode
+    """
     def simulate_ODE(self):
         self.solution_ODE = odeint(self.equations_ODE, self.q_0, self.time)
 
     ###########################################################################
-    # plot both results                                                       #
+    # plotting                                                                #
     ###########################################################################
 
+    """
+        takes the cardillo result and converts the quarternion to a proper
+        angle and angular velocity
+    """
+    def _extract_cardillo_results(self):
+        q_c = np.stack(
+            [quat2axis_angle(row) for row in self.solution_cardillo.q[:, 3:7]],
+            axis=1,
+        )
+
+        phi_c = q_c[2] * RAD2DEG
+        phi_dot_c = self.solution_cardillo.u[:, 5] * RAD2DEG
+        return phi_c, phi_dot_c
+
+    """
+        generates plots to visually compare the two results to each other
+        simulate_cardillo and simulate_ODE have to be called first
+    """
     def plot_results(self):
         # extract ODE params
         time_o = self.time
@@ -170,15 +190,8 @@ class RotatingBar():
         phi_dot_o = self.solution_ODE[:, 1] * RAD2DEG
 
         # extract cardillo params
-        # q is converted from quarterions to angles here, which is done
-        # two lines below
         time_c = self.solution_cardillo.t
-        q_c = np.stack(
-            [quat2axis_angle(row) for row in self.solution_cardillo.q[:, 3:]],
-            axis=1,
-        )
-        phi_c = q_c[2] * RAD2DEG
-        phi_dot_c = self.solution_cardillo.u[:, 5] * RAD2DEG
+        phi_c, phi_dot_c = self._extract_cardillo_results()
 
         # ODE solution
         plt.figure(1)
@@ -222,7 +235,7 @@ class RotatingBar():
 
 
 if __name__ == "__main__":
-    # tuning zone -> use degrees, kilograms, meters
+    # tuning -> use degrees, kilograms, meters
     rotating_bar = RotatingBar(
         initial_position=90,
         initial_velocity=20,

@@ -1,16 +1,5 @@
 
 
-"""
-    This script implements the pendulum with two segments
-    The used system of ODEs is
-        q̇₁ = q₂
-        TODO: update this, no longer accurate
-        q̇₂ = (−dq₂ − c(q₁−φₑ) − (½l₁m₁ + (l₁+½l₂)m₂)(xₘ(t)+g)sin(q₁))/(Θ₁+Θ₂)
-
-    Date:   09.12.2025
-    Author: David Hambach Ferrer
-"""
-
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
@@ -20,22 +9,27 @@ from cardillo.discrete import RigidBody, Frame
 from cardillo.constraints import Revolute, RigidConnection
 from cardillo.solver import Moreau
 from cardillo.forces import Force
-from cardillo.force_laws._base import ScalarForceLawComplianceForm
 from cardillo.force_laws.kelvin_voigt_element import KelvinVoigtElement
 from cardillo.math import quat2axis_angle
 from cardillo.utility.check_time_derivatives import check_time_derivatives
 import csv
 
-###############################################################################
-# Parameters                                                                  #
-###############################################################################
-
 DEG2RAD = np.pi/180
 RAD2DEG = 180/np.pi
 
+"""
+    This class implements the pendulum with two segments
+    The used system of ODEs is
+        q̇₁ = q₂
+             − dq₂ − c[q₁−φₑ] − [m₁l̂₁+m₂l̂₂] [ẍₘ(t) cos(q₁) - g sin(q₁)]
+        q̇₂ = ----------------------------------------------------------
+                            m₁l̂₁² + m₂l̂₂² + Θ₁ + Θ₂
 
+    Date:   09.12.2025
+    Author: David Hambach Ferrer
+
+"""
 class TwoPartPendulum():
-    # tuning zone -> use degrees, kilograms, meters
 
     def __init__(
         self,
@@ -71,8 +65,6 @@ class TwoPartPendulum():
 
         self.c = spring_constant
         self.d = damper_constant
-        # x_m = lambda t: 3/4*np.sin(4*t)
-        # x_m_dot = lambda t: 3*np.cos(4*t)# lambda t : excitation(t)
         self.x_m = lambda t: excitation(t)
 
         # take first and second derivative
@@ -221,8 +213,6 @@ class TwoPartPendulum():
         self.system.add(spring_damper)
         self.system.add(gravity_1)
         self.system.add(gravity_2)
-        self.system.add(excitation_1)
-        self.system.add(excitation_2)
         self.system.assemble()
 
         # initial condition ODE
@@ -237,44 +227,43 @@ class TwoPartPendulum():
     # simulation                                                              #
     ###########################################################################
 
+    """
+        simulates everything according to the defined setup using cardillo
+    """
     def simulate_cardillo(self):
         solver = Moreau(self.system, self.t_end, self.dt)
         self.solution_cardillo = solver.solve()
 
-    # dynamics
+    """
+        contains system dynamics that are passed on to the ode
+    """
     def equations_ODE(self, q, t):
         q_0_dot = q[1]
         q_1_dot = (
-            -((self.m_1*self.l_1_hat + self.m_2*self.l_2_hat)
-            * self.x_m_ddot(t)*np.cos(q[0])
-            + self.c*(q[0]-self.phi_e) + self.d*q[1]
-            + (self.m_1*self.l_1_hat + self.m_2*self.l_2_hat)
-            * self.g*np.sin(q[0]))
+            (-(self.m_1*self.l_1_hat + self.m_2*self.l_2_hat)
+            * (self.x_m_ddot(t)*np.cos(q[0])
+            + self.g*np.sin(q[0]))
+            - self.c*(q[0]-self.phi_e) - self.d*q[1])
             / (self.m_1*self.l_1_hat**2 + self.m_2*self.l_2_hat**2
             + self.Theta_1 + self.Theta_2)
         )
         return np.array([q_0_dot, q_1_dot])
 
-    # solve ODE and plot solution
-
-
+    """
+        simulates everything according to the defined setup using the ode
+    """
     def simulate_ODE(self):
         self.solution_ODE = odeint(self.equations_ODE, self.q_0, self.time)
 
     ###########################################################################
-    # plot both results                                                       #
+    # plotting and logging                                                    #
     ###########################################################################
 
-    # extract ODE params
-    def plot_results(self):
-        time_o = self.time
-        phi_o = self.solution_ODE[:, 0] * RAD2DEG
-        phi_dot_o = self.solution_ODE[:, 1] * RAD2DEG
-
-        # extract cardillo params
-        # q is converted from quarterions to angles here, which is done
-        # two lines below
-        time_c = self.solution_cardillo.t
+    """
+        takes the cardillo result and converts the quarternion to a proper
+        angle and angular velocity
+    """
+    def _extract_cardillo_results(self):
         q_c = np.stack(
             [quat2axis_angle(row) for row in self.solution_cardillo.q[:, 3:7]],
             axis=1,
@@ -282,6 +271,21 @@ class TwoPartPendulum():
 
         phi_c = q_c[2] * RAD2DEG
         phi_dot_c = self.solution_cardillo.u[:, 5] * RAD2DEG
+        return phi_c, phi_dot_c
+
+    """
+        generates plots to visually compare the two results to each other
+        simulate_cardillo and simulate_ODE have to be called first
+    """
+    def plot_results(self):
+        # extract ode params
+        time_o = self.time
+        phi_o = self.solution_ODE[:, 0] * RAD2DEG
+        phi_dot_o = self.solution_ODE[:, 1] * RAD2DEG
+
+        # extract cardillo params
+        time_c = self.solution_cardillo.t
+        phi_c, phi_dot_c = self._extract_cardillo_results()
 
         # ODE solution
         plt.figure(1)
@@ -336,20 +340,14 @@ class TwoPartPendulum():
 
         plt.show()
 
-    ###########################################################################
-    # write csv file                                                          #
-    ###########################################################################
-
+    """
+        writes time, phi, phi dot from the cardillo solution to a csv file
+        in the same directory
+    """
     def write_results_to_csv(self):
         file_path = 'examples/two_part_pendulum/two_part_pendulum_log.csv'
 
-        q_c = np.stack(
-            [quat2axis_angle(row) for row in self.solution_cardillo.q[:, 3:7]],
-            axis=1,
-        )
-
-        phi_c = q_c[2] * RAD2DEG
-        phi_dot_c = self.solution_cardillo.u[:, 5] * RAD2DEG
+        phi_c, phi_dot_c = self._extract_cardillo_results()
 
         with open(file_path, 'w+', newline='') as csvfile:
             writer = csv.writer(csvfile, delimiter=',')
@@ -362,8 +360,7 @@ class TwoPartPendulum():
 
 
 if __name__ == "__main__":
-
-    # tuning zone -> use degrees, kilograms, meters
+    # tuning -> use degrees, kilograms, meters
     two_part_pendulum = TwoPartPendulum(
         initial_position=45,
         initial_velocity=0,

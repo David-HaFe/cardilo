@@ -263,11 +263,14 @@ class TwoPartPendulum():
     """
         takes the cardillo result vector and returns the kinetic and potential
         energy for the system.
-
-        kinetic energy =
-
-        potential energy =
-
+        kinetic energy
+              1
+            = -[(m₁l̂₁²+m₂l̂₂²+Θ₁+Θ₂)φ̇ ²+(m₁+m₂)ẋₘ²(t)+2(m₁l̂₁+m₂l̂₂)ẋₘ(t)φ̇ cos(φ)]
+              2
+        potential energy
+              1
+            = -c[φ−φₑ]² - (m₁l̂₁+m₂l̂₂) g cos(φ)
+              2
     """
     def _calculate_energy(
         self,

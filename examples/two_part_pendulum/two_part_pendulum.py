@@ -18,10 +18,11 @@ DEG2RAD = np.pi/180
 RAD2DEG = 180/np.pi
 
 """
-    This class implements the pendulum with two segments
-    The used system of ODEs is
+    This class implements the pendulum with two segments in cardillo as well as
+    with an ODE.
+    The following ODE is used with q₁= φ, q₂= φ̇
         q̇₁ = q₂
-             − dq₂ − c[q₁−φₑ] − [m₁l̂₁+m₂l̂₂] [ẍₘ(t) cos(q₁) - g sin(q₁)]
+             − dq₂ − c[q₁−φₑ] − [m₁l̂₁+m₂l̂₂] [ẍₘ(t) cos(q₁) + g sin(q₁)]
         q̇₂ = ----------------------------------------------------------
                             m₁l̂₁² + m₂l̂₂² + Θ₁ + Θ₂
 
@@ -260,6 +261,34 @@ class TwoPartPendulum():
     ###########################################################################
 
     """
+        takes the cardillo result vector and returns the kinetic and potential
+        energy for the system.
+
+        kinetic energy =
+
+        potential energy =
+
+    """
+    def _calculate_energy(
+        self,
+        t: np.array,
+        phi: np.array,
+        phi_dot: np.array,
+    ):
+        kinetic_energy = .5*(
+            (self.m_1*self.l_1_hat**2+self.m_2*self.l_2_hat**2+self.Theta_1
+             +self.Theta_2)*np.square(phi_dot)
+            + (self.m_1+self.m_2)*np.square(self.x_m_dot(t))
+            + 2*(self.m_1+self.m_2)*self.x_m_dot(t)*phi_dot*np.sin(phi)
+        )
+        potential_energy = (
+            .5*self.c*np.square(phi-self.phi_e)
+            - (self.m_1*self.l_1_hat+self.m_2*self.l_2_hat)*self.g*np.cos(phi)
+        )
+        total_energy = kinetic_energy + potential_energy
+        return kinetic_energy, potential_energy, total_energy
+
+    """
         takes the cardillo result and converts the quarternion to a proper
         angle and angular velocity
     """
@@ -269,8 +298,8 @@ class TwoPartPendulum():
             axis=1,
         )
 
-        phi_c = q_c[2] * RAD2DEG
-        phi_dot_c = self.solution_cardillo.u[:, 5] * RAD2DEG
+        phi_c = q_c[2]
+        phi_dot_c = self.solution_cardillo.u[:, 5]
         return phi_c, phi_dot_c
 
     """
@@ -278,14 +307,26 @@ class TwoPartPendulum():
         simulate_cardillo and simulate_ODE have to be called first
     """
     def plot_results(self):
-        # extract ode params
+        # extract ODE params -> '_o' means variable comes from ODE
         time_o = self.time
-        phi_o = self.solution_ODE[:, 0] * RAD2DEG
-        phi_dot_o = self.solution_ODE[:, 1] * RAD2DEG
+        phi_o = self.solution_ODE[:, 0]
+        phi_dot_o = self.solution_ODE[:, 1]
+        e_kin_o, e_pot_o, energy_o = self._calculate_energy(time_o,
+                                                            phi_o,
+                                                            phi_dot_o)
 
-        # extract cardillo params
+        # extract cardillo params -> '_c' means variable comes from cardillo
         time_c = self.solution_cardillo.t
         phi_c, phi_dot_c = self._extract_cardillo_results()
+        e_kin_c, e_pot_c, energy_c = self._calculate_energy(time_c,
+                                                            phi_c,
+                                                            phi_dot_c)
+
+        # convert everything from rad to degrees for plotting
+        phi_o = RAD2DEG * phi_o
+        phi_dot_o = RAD2DEG * phi_dot_o
+        phi_c = RAD2DEG * phi_c
+        phi_dot_c = RAD2DEG * phi_dot_c
 
         # ODE solution
         plt.figure(1)
@@ -338,6 +379,27 @@ class TwoPartPendulum():
         plt.legend()
         plt.grid()
 
+        # energy of the systems
+        fig, (plt_top, plt_bottom) = plt.subplots(2, 1, num=5)
+        plt.suptitle("Energy of the system (ODE)")
+
+        plt_top.plot(time_o, e_kin_o, 'r', label="kinetic energy of ODE")
+        plt_top.plot(time_o, e_pot_o, 'g', label="potential energy of ODE")
+        plt_top.plot(time_o, energy_o, 'b', label="total energy of ODE")
+        plt_top.set_xlabel("time [s]")
+        plt_top.set_ylabel("Energy [J]")
+        plt_top.legend()
+        plt_top.grid()
+
+        plt_bottom.plot(time_c, e_kin_c, 'r', label="kinetic energy cardillo")
+        plt_bottom.plot(time_c, e_pot_c, 'g',
+                        label="potential energy cardillo")
+        plt_bottom.plot(time_c, energy_c, 'b', label="total energy cardillo")
+        plt_bottom.set_xlabel("time [s]")
+        plt_bottom.set_ylabel("Energy [J]")
+        plt_bottom.legend()
+        plt_bottom.grid()
+
         plt.show()
 
     """
@@ -363,17 +425,17 @@ if __name__ == "__main__":
     # tuning -> use degrees, kilograms, meters
     two_part_pendulum = TwoPartPendulum(
         initial_position=45,
-        initial_velocity=0,
-        neutral_position=90,
+        initial_velocity=10,
+        neutral_position=35,
         spring_constant=4,
-        damper_constant=2,
-        excitation=lambda t: .3*np.sin(1*t),
+        damper_constant=0,
+        excitation=lambda t: 0*t, # .3*np.sin(1*t),
         mass_1=1,
         mass_2=1,
         length_1=1,
         length_2=1,
         simulation_time=20,
-        time_step=.001,
+        time_step=.01,
     )
 
     two_part_pendulum.simulate_cardillo()

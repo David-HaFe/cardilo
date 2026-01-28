@@ -16,11 +16,11 @@ RAD2DEG = 180/np.pi
 
 """
     This class implements the rotating bar in cardillo as well as with an ODE.
-    The following ODE is used
-        q₁= φ, q₂= φ̇
+    The following ODE is used with q₁= φ, q₂= φ̇
         q̇₁ = q₂
-        q̇₂ = −dq₂ − c(q₁−φₑ)
-
+               -dq₂ - c(q₁−φₑ)
+        q̇₂ = ------------------
+                     Θ
     Date:   09.12.2025
     Author: David Hambach Ferrer
 """
@@ -166,6 +166,23 @@ class RotatingBar():
     ###########################################################################
 
     """
+        takes the cardillo result vector and returns the kinetic and potential
+        energy for the system.
+                         1                           1
+        kinetic energy = - Θ (φ̇ )², potential energy = - c (φ-φₑ)²
+                         2                           2
+    """
+    def _calculate_energy(
+        self,
+        phi: np.array,
+        phi_dot: np.array,
+    ):
+        kinetic_energy = .5*self.Theta*np.square(phi_dot)
+        potential_energy = .5*self.c*np.square(phi-self.phi_e)
+        total_energy = kinetic_energy + potential_energy
+        return kinetic_energy, potential_energy, total_energy
+
+    """
         takes the cardillo result and converts the quarternion to a proper
         angle and angular velocity
     """
@@ -175,8 +192,8 @@ class RotatingBar():
             axis=1,
         )
 
-        phi_c = q_c[2] * RAD2DEG
-        phi_dot_c = self.solution_cardillo.u[:, 5] * RAD2DEG
+        phi_c = q_c[2]
+        phi_dot_c = self.solution_cardillo.u[:, 5]
         return phi_c, phi_dot_c
 
     """
@@ -184,14 +201,24 @@ class RotatingBar():
         simulate_cardillo and simulate_ODE have to be called first
     """
     def plot_results(self):
-        # extract ODE params
+        # extract ODE params -> '_o' means variable comes from ODE
         time_o = self.time
-        phi_o = self.solution_ODE[:, 0] * RAD2DEG
-        phi_dot_o = self.solution_ODE[:, 1] * RAD2DEG
+        phi_o = self.solution_ODE[:, 0]
+        phi_dot_o = self.solution_ODE[:, 1]
+        np.asarray(phi_o)
+        np.asarray(phi_dot_o)
+        e_kin_o, e_pot_o, energy_o = self._calculate_energy(phi_o, phi_dot_o)
 
-        # extract cardillo params
+        # extract cardillo params -> '_c' means variable comes from cardillo
         time_c = self.solution_cardillo.t
         phi_c, phi_dot_c = self._extract_cardillo_results()
+        e_kin_c, e_pot_c, energy_c = self._calculate_energy(phi_c, phi_dot_c)
+
+        # convert everything from rad to degrees for plotting
+        phi_o = RAD2DEG * phi_o
+        phi_dot_o = RAD2DEG * phi_dot_o
+        phi_c = RAD2DEG * phi_c
+        phi_dot_c = RAD2DEG * phi_dot_c
 
         # ODE solution
         plt.figure(1)
@@ -231,6 +258,27 @@ class RotatingBar():
         plt_bottom.legend()
         plt_bottom.grid()
 
+        # energy of the systems
+        fig, (plt_top, plt_bottom) = plt.subplots(2, 1, num=4)
+        plt.suptitle("Energy of the system (ODE)")
+
+        plt_top.plot(time_o, e_kin_o, 'r', label="kinetic energy of ODE")
+        plt_top.plot(time_o, e_pot_o, 'g', label="potential energy of ODE")
+        plt_top.plot(time_o, energy_o, 'b', label="total energy of ODE")
+        plt_top.set_xlabel("time [s]")
+        plt_top.set_ylabel("Energy [J]")
+        plt_top.legend()
+        plt_top.grid()
+
+        plt_bottom.plot(time_c, e_kin_c, 'r', label="kinetic energy cardillo")
+        plt_bottom.plot(time_c, e_pot_c, 'g',
+                        label="potential energy cardillo")
+        plt_bottom.plot(time_c, energy_c, 'b', label="total energy cardillo")
+        plt_bottom.set_xlabel("time [s]")
+        plt_bottom.set_ylabel("Energy [J]")
+        plt_bottom.legend()
+        plt_bottom.grid()
+
         plt.show()
 
 
@@ -239,9 +287,9 @@ if __name__ == "__main__":
     rotating_bar = RotatingBar(
         initial_position=90,
         initial_velocity=20,
-        neutral_position=45,
+        neutral_position=35,
         spring_constant=1,
-        damper_constant=1,
+        damper_constant=0,
         mass=1,
         length=1,
         simulation_time=5,
